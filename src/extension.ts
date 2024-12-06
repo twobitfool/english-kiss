@@ -4,12 +4,19 @@ import * as vscode from 'vscode';
 
 // Define a type for the text blocks that we will be working with
 interface TextBlock {
-	text:    string;
-	start:   vscode.Position;
-	end:     vscode.Position;
+	text: string;
+	complex: boolean;
+	start: vscode.Position;
+	end: vscode.Position;
 }
 
+// Flag for whether to log debug messages (will be enabled automatically)
 let verboseLogging = false;
+
+// Create a decoration to "highlight" the overly complex text
+let complexTextDecoration: vscode.TextEditorDecorationType;
+
+
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -17,6 +24,25 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Set the logging level based on whether the extension is in development mode
 	verboseLogging = context.extensionMode === vscode.ExtensionMode.Development;
+
+
+	complexTextDecoration = vscode.window.createTextEditorDecorationType({
+
+		textDecoration: [
+			'underline wavy orange;', // Squiggly underline to encourage hover
+			'filter: blur(1px);',     // Make it (literally) harder to read ;)
+		].join(' '),
+
+		// Make "complex" text brighter to counter the blur effect
+		// color: 'rgba(255,255,255,0.9)',
+
+		// Add another style change to make the "complex" text stand out even more
+		// fontStyle: 'italic',
+
+		// Add a background color to the "complex" text
+		backgroundColor: 'rgba(255,0,0,0.1)' // Highlight color
+	});
+
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
@@ -37,6 +63,11 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.workspace.onDidChangeTextDocument(
 		throttle(onDocumentChange, 100)
 	);
+
+	// Apply the highlighting to the currently active editor (after activation)
+	if (vscode.window.activeTextEditor) {
+		highlightComplexText(vscode.window.activeTextEditor);
+	}
 }
 
 
@@ -47,12 +78,39 @@ function onDocumentChange(event: vscode.TextDocumentChangeEvent) {
 		return;
 	}
 
-	const textBlocks = extractSentences(event.document);
-	debug('Text blocks:', textBlocks.length);
-	debug('First block:', textBlocks[0]);
-	debug('Last block:', textBlocks[textBlocks.length - 1]);
+	highlightComplexText(vscode.window.activeTextEditor!);
 }
 
+
+
+
+function highlightComplexText(editor: vscode.TextEditor): void {
+	if (editor.document.languageId !== 'plaintext') {
+		return;
+	}
+
+	debug('highlightComplexText');
+
+	// Identify the hard-to-read text
+	const document = editor.document;
+	const textBlocks = extractSentences(document);
+	const badBlocks = textBlocks.filter(block => block.complex);
+
+
+	textBlocks.forEach(block => {
+		debug([block.complex, block.text.substring(0, 120)]);
+	});
+
+
+	const decorations = badBlocks.map(block => {
+		return {
+			range: new vscode.Range(block.start, block.end),
+			hoverMessage: `This is hard to read (overly complex). \n\nTry smaller words and shorter sentences.`,
+		};
+	});
+
+	editor.setDecorations(complexTextDecoration, decorations);
+}
 
 
 // This method is called when your extension is deactivated
@@ -99,12 +157,22 @@ function extractSentences(document: vscode.TextDocument): TextBlock[] {
 
 		sentences.push({
 			text,
+			complex: isComplex(text),
 			start: startPosition,
 			end:   endPosition,
 		});
 	}
 
 	return sentences;
+}
+
+
+// Determine if a string is complex enough to be highlighted
+function isComplex(text: string): boolean {
+	const words = text.split(/\s+/);
+
+	// For now, we'll just say that any sentence with too many words is complex
+	return words.length > 10;
 }
 
 
