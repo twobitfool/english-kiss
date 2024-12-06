@@ -2,6 +2,9 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+// @ts-ignore
+import rs from 'text-readability';
+
 // Define a type for the text blocks that we will be working with
 interface TextBlock {
   text: string;
@@ -170,9 +173,27 @@ function extractSentences(document: vscode.TextDocument): TextBlock[] {
 // Determine if a string is complex enough to be highlighted
 function isComplex(text: string): boolean {
   const words = text.split(/\s+/);
+  const wordCount = words.length;
 
-  // For now, we'll just say that any sentence with too many words is complex
-  return words.length > 10;
+  // The `text-readability` library scores can get wonky with shorter text
+  if (wordCount < 5) {
+    return false;
+  }
+
+  // TODO: Make this configurable by the user (but put it behind a UI that hides
+  // the messy details about grade levels and readability scores)
+  const MAX_GRADE_LEVEL = 14;
+  const RETURN_GRADE_LEVEL = true;
+
+  //----------------------------------------------------------------------------
+  // NOTE: The `textStandard` function is supposed to use a blend of readability
+  // scores to determine the grade level of the text. However, it seems to be
+  // less than great (in my quick tests).
+  //----------------------------------------------------------------------------
+
+  // TODO: Find a more accurate way to determine the grade level of the text
+  const gradeLevel = rs.textStandard(text, RETURN_GRADE_LEVEL);
+  return gradeLevel > MAX_GRADE_LEVEL;
 }
 
 
