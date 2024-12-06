@@ -1,0 +1,17 @@
+out
+dist
+node_modules
+.vscode-test/
+*.vsix
+
+# Exclude VS Code settings
+.vscode/
+
+# Exclude build and test files
+.vscode-test.mjs
+
+# Exclude environment-specific files
+.tool-versions
+
+# Exclude yarn configuration
+.yarnrc
