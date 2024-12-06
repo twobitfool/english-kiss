@@ -1,10 +1,10 @@
-# english-kiss README
+# The english-kiss (VS Code Extension)
 
-This extension makes helps you to simplify your writing (English), but highlighting the places where you got a little too fancy with your words.
+This VS Code extension helps you simplify your writing (English), by highlighting places where you got a little "too fancy" with your words. It's not anything like a french kiss.
 
 ## WARNING
 
-This is a work in progress. It is not yet ready for use.
+This is just a prototype. Don't actually use it 😜
 
 ## Next Steps
 
