@@ -27,6 +27,10 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(disposable);
 
 	vscode.workspace.onDidChangeTextDocument(event => {
+		if (event.document.languageId !== 'plaintext') {
+			return;
+		}
+
 		debug('onDidChangeTextDocument fired');
 	});
 }
