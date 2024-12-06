@@ -33,17 +33,27 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(disposable);
 
-	vscode.workspace.onDidChangeTextDocument(event => {
-		if (event.document.languageId !== 'plaintext') {
-			return;
-		}
-
-		const textBlocks = extractSentences(event.document);
-		debug('Text blocks:', textBlocks.length);
-		debug('First block:', textBlocks[0]);
-		debug('Last block:', textBlocks[textBlocks.length - 1]);
-	});
+	// This event fires very frequently, so we throttle to be a better citizen
+	vscode.workspace.onDidChangeTextDocument(
+		throttle(onDocumentChange, 100)
+	);
 }
+
+
+
+// This function is called whenever the text in a document changes
+function onDocumentChange(event: vscode.TextDocumentChangeEvent) {
+	if (event.document.languageId !== 'plaintext') {
+		return;
+	}
+
+	const textBlocks = extractSentences(event.document);
+	debug('Text blocks:', textBlocks.length);
+	debug('First block:', textBlocks[0]);
+	debug('Last block:', textBlocks[textBlocks.length - 1]);
+}
+
+
 
 // This method is called when your extension is deactivated
 export function deactivate() {}
@@ -95,4 +105,28 @@ function extractSentences(document: vscode.TextDocument): TextBlock[] {
 	}
 
 	return sentences;
+}
+
+
+// Run a function no more than once every `delay` milliseconds
+function throttle(fn: Function, delay: number) {
+	let timeout: NodeJS.Timeout | null = null;
+	let lastArgs: any[] | null = null;
+
+	const invoke = () => {
+		if (lastArgs) {
+			fn(...lastArgs);
+			lastArgs = null;
+			timeout = setTimeout(invoke, delay);
+		} else {
+			timeout = null;
+		}
+	};
+
+	return (...args: any[]) => {
+		lastArgs = args;
+		if (!timeout) {
+			invoke();
+		}
+	};
 }
