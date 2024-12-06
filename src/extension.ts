@@ -2,6 +2,13 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
+// Define a type for the text blocks that we will be working with
+interface TextBlock {
+	text:    string;
+	start:   vscode.Position;
+	end:     vscode.Position;
+}
+
 let verboseLogging = false;
 
 // This method is called when your extension is activated
@@ -31,7 +38,10 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 
-		debug('onDidChangeTextDocument fired');
+		const textBlocks = extractSentences(event.document);
+		debug('Text blocks:', textBlocks.length);
+		debug('First block:', textBlocks[0]);
+		debug('Last block:', textBlocks[textBlocks.length - 1]);
 	});
 }
 
@@ -42,6 +52,47 @@ export function deactivate() {}
 
 function debug(...args: any[]) {
 	if (verboseLogging) {
-		console.log('DEBUG', new Date().valueOf(), args.join('\t'));
+		const expandedArgs = args.map(arg => {
+			if (typeof arg === 'object') {
+				return JSON.stringify(arg);
+			}
+			return arg;
+		});
+		const time = new Date();
+		console.log('\n🐝 DEBUG', time.toLocaleTimeString(), `(${time.getMilliseconds()})` );
+		console.log('  ', expandedArgs.join(' '));
 	}
+}
+
+
+function extractSentences(document: vscode.TextDocument): TextBlock[] {
+	// Get the full text of the document
+	const text = document.getText();
+
+	// Regex to match sentences, including a line at the end of the file
+	const sentenceRegex = /[^.!?\n]+[.!?\n]*|[^.!?\n]+$/g;
+
+	const sentences: TextBlock[] = [];
+
+	let match;
+	while ((match = sentenceRegex.exec(text)) !== null) {
+		const text = match[0].trim();
+
+		// Skip empty sentences
+		if (text.length === 0) {
+			continue;
+		}
+
+		// Find the start and end position of the sentence
+		const startPosition = document.positionAt(match.index);
+		const endPosition = document.positionAt(match.index + match[0].length);
+
+		sentences.push({
+			text,
+			start: startPosition,
+			end:   endPosition,
+		});
+	}
+
+	return sentences;
 }
