@@ -3,6 +3,7 @@
   "displayName": "english-kiss",
   "description": "Eschew obfuscated prose",
   "version": "0.0.1",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.95.0"
   },
