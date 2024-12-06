@@ -1,6 +1,19 @@
 # english-kiss README
 
-This is the README for your extension "english-kiss". After writing up a brief description, we recommend including the following sections.
+This extension makes helps you to simplify your writing (English), but highlighting the places where you got a little too fancy with your words.
+
+## WARNING
+
+This is a work in progress. It is not yet ready for use.
+
+## Next Steps
+
+* Quick Toggle: Make it easy to toggle this feature on and off -- from status bar?
+* Discoverability: Link in hover text to get details and (AI) suggestions to fix.
+* Customization: Let the user adjust the appearance of the highlight.
+* Accessibility: Screen readers, color blindness, etc.
+* Performance: Only reevaluate the parts of the document that changed.
+* File Formats: Support other types of documents (e.g. markdown, comments in code, etc.)
 
 ## Features
 
