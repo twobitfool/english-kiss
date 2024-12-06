@@ -108,7 +108,7 @@ function highlightComplexText(editor: vscode.TextEditor): void {
   const decorations = badBlocks.map(block => {
     return {
       range: new vscode.Range(block.start, block.end),
-      hoverMessage: `This is hard to read (overly complex). \n\nTry smaller words and shorter sentences.`,
+      hoverMessage: `This text is hard to read -- too complex. \n\nTry smaller words and shorter sentences.\n\n(english-kiss extension)`,
     };
   });
 
