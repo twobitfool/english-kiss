@@ -15,7 +15,6 @@ This extensions makes complicated sentences difficult to read (literally).
 
 ## Next Steps
 
-* Variable Highlighting: Make the style get gradually more intense as the text gets more complex.
 * Quick Toggle: Make it easy to toggle this feature on and off -- from status bar?
 * Discoverability: Link in hover text to get details and (AI) suggestions to fix.
 * Customization: Let the user adjust the appearance of the highlight.
