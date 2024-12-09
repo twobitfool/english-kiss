@@ -8,7 +8,7 @@ import rs from 'text-readability';
 // Define a type for the text blocks that we will be working with
 interface TextBlock {
   text: string;
-  complex: boolean;
+  grade: number;
   start: vscode.Position;
   end: vscode.Position;
 }
@@ -16,10 +16,12 @@ interface TextBlock {
 // Flag for whether to log debug messages (will be enabled automatically)
 let verboseLogging = false;
 
-// Create a decoration to "highlight" the overly complex text
-let complexTextDecoration: vscode.TextEditorDecorationType;
+// Array of TextEditorDecorationType objects applied to the text
+let decorationTypes: vscode.TextEditorDecorationType[] = [];
 
-
+// The minimum and maximum grade levels to highlight (as difficult to read)
+const minGrade = 9;
+const maxGrade = 16; // and anything above
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -28,24 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Set the logging level based on whether the extension is in development mode
   verboseLogging = context.extensionMode === vscode.ExtensionMode.Development;
 
-
-  complexTextDecoration = vscode.window.createTextEditorDecorationType({
-
-    textDecoration: [
-      'underline wavy orange;', // Squiggly underline to encourage hover
-      'filter: blur(1px);',     // Make it (literally) harder to read ;)
-    ].join(' '),
-
-    // Make "complex" text brighter to counter the blur effect
-    // color: 'rgba(255,255,255,0.9)',
-
-    // Add another style change to make the "complex" text stand out even more
-    // fontStyle: 'italic',
-
-    // Add a background color to the "complex" text
-    backgroundColor: 'rgba(255,0,0,0.1)' // Highlight color
-  });
-
+  initializeDecorationTypes();
 
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
@@ -85,34 +70,76 @@ function onDocumentChange(event: vscode.TextDocumentChangeEvent) {
 }
 
 
-
-
 function highlightComplexText(editor: vscode.TextEditor): void {
   if (editor.document.languageId !== 'plaintext') {
     return;
   }
 
-  debug('highlightComplexText');
-
-  // Identify the hard-to-read text
   const document = editor.document;
   const textBlocks = extractSentences(document);
-  const badBlocks = textBlocks.filter(block => block.complex);
-
 
   textBlocks.forEach(block => {
-    debug([block.complex, block.text.substring(0, 120)]);
+    debug(`Grade ${block.grade}: ${block.text}`);
   });
 
+  decorationTypes.forEach(d => {
+    // Find the blocks that match the grade level of the decoration
+    const grade = decorationTypes.indexOf(d) + minGrade;
+    const blocks = textBlocks.filter(block => block.grade === grade);
 
-  const decorations = badBlocks.map(block => {
-    return {
-      range: new vscode.Range(block.start, block.end),
-      hoverMessage: `This text is hard to read -- too complex. \n\nTry smaller words and shorter sentences.\n\n(english-kiss extension)`,
+    // Apply the decoration to the text blocks
+    const decorations = blocks.map(block => {
+      return {
+        range: new vscode.Range(block.start, block.end),
+        hoverMessage: `This text is hard to read -- grade level: ${block.grade}. \n\nTry smaller words and shorter sentences.\n\n(english-kiss extension)`,
+      };
+    });
+
+    editor.setDecorations(d, decorations);
+  });
+
+}
+
+
+// Pre-generate decoration types for each grade level, so we can quickly apply
+// the correct decoration to the text without recalculating the styles each
+// time. This also helps to avoid flicker when updating the document, because
+// we the old decorations are removed and the new ones are added in one step.
+function initializeDecorationTypes() {
+  const useBlur = true;
+  const useBackground = true;
+
+  for(let grade = minGrade; grade <= maxGrade; grade++) {
+    const percent = (grade - minGrade) / (maxGrade - minGrade);
+    const blur = pickValueFromRange(percent, 0.5, 1.5);
+    const blurInPixels = `${Math.round(blur * 10) / 10}px`;
+    const backgroundOpacity = pickValueFromRange(percent, 0.1, 0.4);
+
+
+    const style = {
+      textDecoration: '',
+      backgroundColor: '',
     };
-  });
 
-  editor.setDecorations(complexTextDecoration, decorations);
+    if (useBlur) {
+      // NOTE: The blur filter won't work unless prefixed with a semicolon :P
+      style['textDecoration'] = `;filter:blur(${blurInPixels});`;
+    }
+
+    if (useBackground) {
+      style['backgroundColor'] = `rgba(255,0,0,${backgroundOpacity})`;
+    }
+
+    const decorationType = vscode.window.createTextEditorDecorationType(style);
+
+    decorationTypes.push(decorationType);
+  }
+}
+
+
+function pickValueFromRange(percent: number, min: number, max: number): number {
+  const value = min + percent * (max - min);
+  return Math.min(max, Math.max(min, value));
 }
 
 
@@ -160,7 +187,7 @@ function extractSentences(document: vscode.TextDocument): TextBlock[] {
 
     sentences.push({
       text,
-      complex: isComplex(text),
+      grade: gradeLevel(text),
       start: startPosition,
       end:   endPosition,
     });
@@ -171,29 +198,28 @@ function extractSentences(document: vscode.TextDocument): TextBlock[] {
 
 
 // Determine if a string is complex enough to be highlighted
-function isComplex(text: string): boolean {
+function gradeLevel(text: string): number {
   const words = text.split(/\s+/);
   const wordCount = words.length;
 
   // The `text-readability` library scores can get wonky with shorter text
   if (wordCount < 5) {
-    return false;
+    return 1;
   }
-
-  // TODO: Make this configurable by the user (but put it behind a UI that hides
-  // the messy details about grade levels and readability scores)
-  const MAX_GRADE_LEVEL = 14;
-  const RETURN_GRADE_LEVEL = true;
 
   //----------------------------------------------------------------------------
   // NOTE: The `textStandard` function is supposed to use a blend of readability
   // scores to determine the grade level of the text. However, it seems to be
   // less than great (in my quick tests).
+  //
+  // TODO: Find a more accurate way to determine the grade level of the text
   //----------------------------------------------------------------------------
 
-  // TODO: Find a more accurate way to determine the grade level of the text
-  const gradeLevel = rs.textStandard(text, RETURN_GRADE_LEVEL);
-  return gradeLevel > MAX_GRADE_LEVEL;
+  const RETURN_GRADE_LEVEL = true;
+
+  const grade = Math.floor(rs.textStandard(text, RETURN_GRADE_LEVEL));
+  const cappedGrade = Math.min(maxGrade, grade);
+  return cappedGrade;
 }
 
 
