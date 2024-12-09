@@ -185,15 +185,33 @@ function extractSentences(document: vscode.TextDocument): TextBlock[] {
     const startPosition = document.positionAt(match.index);
     const endPosition = document.positionAt(match.index + match[0].length);
 
+    // Remove the last word from the sentence, if it is not a full stop
+    let truncatedText = text;
+    const lastChar = text[text.length - 1];
+    if (isStopCharacter(lastChar) === false) {
+      const lastSpace = text.lastIndexOf(' ');
+      truncatedText = text.slice(0, lastSpace);
+    }
+
+    // Ignore the last word of the sentence, until it is finished. Otherwise,
+    // the grade level (of a sentence) "bounces" around as they type each word.
+    const grade = gradeLevel(truncatedText);
+
     sentences.push({
       text,
-      grade: gradeLevel(text),
+      grade,
       start: startPosition,
       end:   endPosition,
     });
   }
 
   return sentences;
+}
+
+
+// Very rough heuristic to determine if a character is a "stop" character for a sentence
+function isStopCharacter(char: string): boolean {
+  return char === '.' || char === '?' || char === '!' || char === '\n' || char === ' ' || char === '\t' || char === '\r' || char === ',';
 }
 
 
